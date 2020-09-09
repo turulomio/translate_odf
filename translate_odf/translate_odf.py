@@ -17,15 +17,18 @@ except:
 def main():
     parser=argparse.ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--from', action='store', help=_('Language to translate from'), required=True)
-    parser.add_argument('--to', action='store', help=_('Language to translate from'), required=True)
-    parser.add_argument('--file_from', action='store', help=_('Language to translate from'), required=True)
-    parser.add_argument('--file_to', action='store', help=_('Language to translate from'), default=None)
-    parser.add_argument('--catalogue', action='store', help=_('Language to translate from'), default=None)
-    parser.add_argument('--help_catalogue', action='append', help=_('Language to translate from'), default=[])
+    parser.add_argument('--to', action='store', help=_('Language to translate to'), required=True)
+    parser.add_argument('--file_from', action='store', help=_('File is going to be translated'), required=True)
+    parser.add_argument('--file_to', action='store', help=_('File where the translation is going to be written'), default=None)
+    parser.add_argument('--catalogue', action='store', help=_('Catalogue with strings to translate in XLIFF format'), default=None)
+    parser.add_argument('--help_catalogue', action='append', help=_('Auxiliar catalogues to fast translations'), default=[])
     args=parser.parse_args()
 
     extension=args.file_from.split(".")[1:][0]
-    
+
+    if len(args.help_catalogue)>0:
+        print (_("Help catalogues are not developed yet"))
+
     if args.file_to is None:
         args.file_to=f"{args.file_from}.{args.to}.{extension}"
         
@@ -61,6 +64,8 @@ def main():
         copyfile(original_xlf, args.catalogue)
     p=subprocess.run(["xliff2odf", "-t",  args.file_from, "-i", args.catalogue, args.file_to])
 
+    if path.exists(original_xlf) is True:
+        remove(original_xlf)
 
-    remove(original_xlf)
-    remove(temporal_destiny_xlf)
+    if path.exists(temporal_destiny_xlf) is True:
+        remove(temporal_destiny_xlf)
