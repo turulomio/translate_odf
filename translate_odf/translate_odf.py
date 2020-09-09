@@ -1,6 +1,6 @@
 import argparse
 import gettext
-from os import path
+from os import path,remove
 from shutil import copyfile
 import pkg_resources
 import subprocess
@@ -38,12 +38,29 @@ def main():
     temporal_destiny_xlf=f"temporal_destiny.xlf"
     p=subprocess.run(["odf2xliff", args.file_from, original_xlf])
     if path.exists(args.catalogue) is True and path.getsize(args.catalogue) > 0:
-        p=subprocess.run(["pomerge", "-t", original_xlf, "-i", args.catalogue, "-o", temporal_destiny_xlf, "--mergeblanks=no"])
+        p=subprocess.run(["pomerge", "-t", original_xlf, "-i", args.catalogue, "-o", temporal_destiny_xlf]) #Here was mergeblanks
         if path.getsize(temporal_destiny_xlf)>0:
+            #copyfile(temporal_destiny_xlf, args.catalogue)
+            #With translate-2.5.0 --mergeblanks no gives error 'NoneType' object has no attribute 'strip' and generates and empty temporal_destiny_xlf
+            # To simultae --mergeblanks I remove <target></target> from output
+            output=""
+            f=open(temporal_destiny_xlf,"r")
+            for line in f.readlines():
+                if line.find("<target></target>")!=-1:
+                    continue
+                output=output+line
+            f.close()
+
+            o=open(args.catalogue,"w")
+            o.write(output)
+            o.close()
+        else:
             print("NO COPIO EL MERGE PORQUE ESTA VACIO")
-            copyfile(temporal_destiny_xlf, args.catalogue)
     else:
-        print("EMPTY FILE")
+        print("Catalogue doesn't exists or is empty. Creating from empty catalogue")
         copyfile(original_xlf, args.catalogue)
     p=subprocess.run(["xliff2odf", "-t",  args.file_from, "-i", args.catalogue, args.file_to])
 
+
+    remove(original_xlf)
+    remove(temporal_destiny_xlf)
