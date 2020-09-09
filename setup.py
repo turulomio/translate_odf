@@ -5,28 +5,6 @@ import platform
 
 
 
-class Reusing(Command):
-    description = "Download modules from https://github.com/turulomio/reusingcode/"
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        from sys import path
-        path.append("translate_odf")
-        from github import download_from_github
-        download_from_github('turulomio','reusingcode','python/github.py', 'translate_odf')
-        download_from_github('turulomio','reusingcode','python/casts.py', 'translate_odf')
-        download_from_github('turulomio','reusingcode','python/datetime_functions.py', 'translate_odf')
-        download_from_github('turulomio','reusingcode','python/decorators.py', 'translate_odf')
-        download_from_github('turulomio','reusingcode','python/libmanagers.py', 'translate_odf')
-        download_from_github('turulomio','reusingcode','python/objects/percentage.py', 'translate_odf/objects/')
-        download_from_github('turulomio','reusingcode','python/objects/currency.py', 'translate_odf/objects/')
-
 ## Class to define doc command
 class Doc(Command):
     description = "Update translations"
@@ -56,10 +34,10 @@ class Procedure(Command):
 
     def run(self):
         print("""Nueva versión:
-  * Cambiar la versión y la fecha en commons.py
+  * Cambiar la versión y la fecha en version.py
   * Modificar el Changelog en README
   * python setup.py doc
-  * linguist
+  * Update locale/*.po
   * python setup.py doc
   * python setup.py install
   * python setup.py doxygen
@@ -124,7 +102,7 @@ with open('translate_odf/version.py', encoding='utf-8') as f:
 
 setup(name='translate_odf',
      version=__version__,
-     description='Python module to read and write LibreOffice and MS Office files',
+     description='Command to translate Libreoffice ODF files with odf2xliff',
      long_description='Project web page is in https://github.com/turulomio/translate_odf',
      long_description_content_type='text/markdown',
      classifiers=['Development Status :: 4 - Beta',
@@ -133,8 +111,8 @@ setup(name='translate_odf',
                   'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
                   'Programming Language :: Python :: 3',
                  ], 
-     keywords='office generator',
-     url='https://translate_odf.sourceforge.io/',
+     keywords='translate odf odt ods odp libreoffice',
+     url='https://github.com/turulomio/translate_odf',
      author='Turulomio',
      author_email='turulomio@yahoo.es',
      license='GPL-3',
@@ -148,7 +126,6 @@ setup(name='translate_odf',
                'uninstall':Uninstall, 
                'doc': Doc,
                'procedure': Procedure,
-               'reusing': Reusing,
               },
      zip_safe=False,
      include_package_data=True

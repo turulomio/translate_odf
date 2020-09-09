@@ -1,7 +1,8 @@
-import datetime
+from datetime import datetime
 
-__versiondate__ = datetime.date(2020, 9, 9)
-__version__ = '0.0.0'
+__versiondatetime__ = datetime(2020, 9, 9)
+__versiondate__=__versiondatetime__.date()
+__version__ = '0.1.0'
 
 
 try:

@@ -26,7 +26,7 @@ msgid "Language to translate from"
 msgstr ""
 
 msgid "Developed by Mariano Muñoz 2020-{}"
-msgstr ""
+msgstr "Desarrollado por Mariano Muñoz 2020-{}"
 
 #~ msgid "Convert a ODF file into an indented xml"
 #~ msgstr "Convierte un fichero ODF en un xml indentado"
