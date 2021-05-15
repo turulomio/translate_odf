@@ -1,67 +1,65 @@
-import argparse
-import gettext
-from os import path,remove
+from argparse import ArgumentParser,  RawTextHelpFormatter
+from gettext import translation
+from os import path, remove
+from pkg_resources import resource_filename
 from shutil import copyfile
-import pkg_resources
-import subprocess
+from subprocess import run
 
 from translate_odf.version import argparse_epilog
 
 try:
-    t=gettext.translation('translate_odf',pkg_resources.resource_filename("translate_odf","locale"))
+    t=translation('translate_odf', resource_filename("translate_odf","locale"))
     _=t.gettext
 except:
     _=str
 
+def run_check(command, shell=False):
+    p=run(command, shell=shell, capture_output=True);
+    if p.returncode!=0:
+        print(f"Error en comando. {command}")
+        print("STDOUT:")
+        print(p.stdout.decode('utf-8'))
+        print("STDERR:")
+        print(p.stderr.decode('utf-8'))
+        print("Saliendo de la instalación")
+        exit(2)
+
+
+
 def main():
-    parser=argparse.ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--from', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
-    parser.add_argument('--to', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
-    parser.add_argument('--file_from', action='store', help=_('File to translate'), required=True,  metavar="FILE")
-    parser.add_argument('--file_to', action='store', help=_('File where tranlated file is going to be generated. If missing add tranlation code before name extension'), default=None,  metavar="FILE")
+    parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
+    parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
+    parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
+    parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
+    parser.add_argument('--output', action='store', help=_('File where tranlated file is going to be generated. If missing add tranlation code before name extension'), default=None,  metavar="FILE")
     parser.add_argument('--catalogue', action='store', help=_('Catalogue with strings to translate in XLIFF format'), default=None,  metavar="FILE")
     parser.add_argument('--auxiliar', action='append', help=_('Auxiliar catalogues to fast translations. File from other projects to help translation. Can be used several times'), default=[],  metavar="FILE")
     args=parser.parse_args()
 
-    extension=args.file_from.split(".")[1:][0]
+    extension=args.input.split(".")[1:][0]
 
     if len(args.auxiliar)>0:
         print (_("Help catalogues are not developed yet"))
 
-    if args.file_to is None:
-        args.file_to=f"{args.file_from}.{args.to}.{extension}"
+    if args.output is None:
+        args.output=f"{args.input}.{args.to_language}.{extension}"
         
     if args.catalogue is None:
-        args.catalogue=f"{args.file_from}.{args.to}.xlf"
+        args.catalogue=f"{args.input}.{args.to_language}.xlf"
 
-    print(args.file_to)
+    print(_(f"Translating '{args.input}' from '{args.from_language }' to '{args.to_language}'"))
+    print(_(f"  - Output: {args.output}"))
+    print(_(f"  - File to translate: {args.catalogue}"))
 
     original_xlf="original.xlf"
     temporal_destiny_xlf="temporal_destiny.xlf"
-    subprocess.run(["odf2xliff", args.file_from, original_xlf])
+    run_check(["odf2xliff", args.input, original_xlf])
     if path.exists(args.catalogue) is True and path.getsize(args.catalogue) > 0:
-        subprocess.run(["pomerge", "-t", original_xlf, "-i", args.catalogue, "-o", temporal_destiny_xlf]) #Here was mergeblanks
-        if path.getsize(temporal_destiny_xlf)>0:
-            #copyfile(temporal_destiny_xlf, args.catalogue)
-            #With translate-2.5.0 --mergeblanks no gives error 'NoneType' object has no attribute 'strip' and generates and empty temporal_destiny_xlf
-            # To simultae --mergeblanks I remove <target></target> from output
-            output=""
-            f=open(temporal_destiny_xlf,"r")
-            for line in f.readlines():
-                if line.find("<target></target>")!=-1:
-                    continue
-                output=output+line
-            f.close()
-
-            o=open(args.catalogue,"w")
-            o.write(output)
-            o.close()
-        else:
-            print("NO COPIO EL MERGE PORQUE ESTA VACIO")
+        run_check(["pomerge", "-t", original_xlf, "-i", args.catalogue, "-o", temporal_destiny_xlf]) #Here was mergeblanks
     else:
-        print("Catalogue doesn't exists or is empty. Creating from empty catalogue")
+        print(_("Catalogue doesn't exists or is empty. Creating from empty catalogue"))
         copyfile(original_xlf, args.catalogue)
-    subprocess.run(["xliff2odf", "-t",  args.file_from, "-i", args.catalogue, args.file_to])
+    run_check(["xliff2odf", "-t",  args.input, "-i", args.catalogue, args.output])
 
     if path.exists(original_xlf) is True:
         remove(original_xlf)
