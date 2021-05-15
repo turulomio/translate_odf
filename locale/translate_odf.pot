@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-09 10:10+0200\n"
+"POT-Creation-Date: 2021-05-15 09:13+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,7 +20,45 @@ msgstr ""
 msgid "Translate ODF files with XLF formats"
 msgstr ""
 
-msgid "Language to translate from"
+msgid "Language to translate from. Example codes: es, fr, en, md"
+msgstr ""
+
+msgid "Language to translate to. Example codes: es, fr, en, md"
+msgstr ""
+
+msgid "File to translate"
+msgstr ""
+
+msgid "Path where translated file is going to be generated. If missing add tranlation code before name extension"
+msgstr ""
+
+msgid "Catalogue with strings to translate in XLIFF format"
+msgstr ""
+
+msgid "Auxiliar catalogues to fast translations. File from other projects to help translation. Can be used several times"
+msgstr ""
+
+msgid "Help catalogues are not developed yet"
+msgstr ""
+
+msgid "Translating '{args.input}' from '{args.from_language }' to '{args.to_language}'"
+msgstr ""
+
+#, python-brace-format
+msgid "  - Output: {args.output}"
+msgstr ""
+
+#, python-brace-format
+msgid "  - File to translate: {args.catalogue}"
+msgstr ""
+
+msgid "Catalogue doesn't exists or is empty. Creating from empty catalogue"
+msgstr ""
+
+msgid "To translate xlf files you can use Lokalize open source tool, which you can find it in most Linux distributions."
+msgstr ""
+
+msgid "Windows users can download it from https://binary-factory.kde.org/job/Lokalize_Release_win64/"
 msgstr ""
 
 msgid "Developed by Mariano Muñoz 2020-{}"

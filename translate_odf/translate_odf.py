@@ -1,9 +1,9 @@
 from argparse import ArgumentParser,  RawTextHelpFormatter
 from gettext import translation
 from os import path, remove
-from pkg_resources import resource_filename
 from shutil import copyfile
 from subprocess import run
+from pkg_resources import resource_filename
 
 from translate_odf.version import argparse_epilog
 
@@ -24,14 +24,12 @@ def run_check(command, shell=False):
         print("Saliendo de la instalación")
         exit(2)
 
-
-
 def main():
     parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
     parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
     parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
     parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
-    parser.add_argument('--output', action='store', help=_('File where tranlated file is going to be generated. If missing add tranlation code before name extension'), default=None,  metavar="FILE")
+    parser.add_argument('--output', action='store', help=_('Path where translated file is going to be generated. If missing add tranlation code before name extension'), default=None,  metavar="FILE")
     parser.add_argument('--catalogue', action='store', help=_('Catalogue with strings to translate in XLIFF format'), default=None,  metavar="FILE")
     parser.add_argument('--auxiliar', action='append', help=_('Auxiliar catalogues to fast translations. File from other projects to help translation. Can be used several times'), default=[],  metavar="FILE")
     args=parser.parse_args()
