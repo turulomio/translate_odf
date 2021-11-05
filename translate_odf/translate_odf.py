@@ -4,6 +4,7 @@ from os import path, remove
 from shutil import copyfile
 from subprocess import run
 from pkg_resources import resource_filename
+from translate_odf.reusing.file_functions import replace_in_file
 
 from translate_odf.version import argparse_epilog
 
@@ -24,7 +25,7 @@ def run_check(command, shell=False):
         print("Saliendo de la instalación")
         exit(2)
 
-def main():
+def main_xlf():
     parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
     parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
     parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
@@ -64,3 +65,78 @@ def main():
 
     if path.exists(temporal_destiny_xlf) is True:
         remove(temporal_destiny_xlf)
+
+
+
+def main_po():
+    parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
+    parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
+    parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
+    parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
+    parser.add_argument('--output', action='store', help=_('Path where translated file is going to be generated. If missing add tranlation code before name extension'), default=None,  metavar="FILE")
+    parser.add_argument('--po', action='store', help=_('Catalogue with strings to translate in XLIFF format'), default=None,  metavar="FILE")
+    parser.add_argument('--pot', action='append', help=_('Generate pot file'), default=None,  metavar="FILE")
+    args=parser.parse_args()
+
+    extension=args.input.split(".")[1:][0]
+
+    if args.output is None:
+        args.output=f"{args.input}.{args.to_language}.{extension}"
+        
+    if args.po is None:
+        args.po=f"{args.input}.{args.to_language}.po"
+    if args.pot is None:
+        args.pot=f"{args.input}.{args.to_language}.pot"
+
+    print(_(f"Translating '{args.input}' from '{args.from_language }' to '{args.to_language}'"))
+    print(_(f"  - Output: {args.output}"))
+    print(_(f"  - File catalog pot: {args.pot}"))
+    print(_(f"  - File catalog po: {args.po}"))
+    
+    if path.exists(args.po)==False:
+        run_check(["msginit", "-i", args.pot,  "-o", args.po])
+
+    original_xlf="original.xlf"
+    if path.exists(original_xlf) is True:
+        remove(original_xlf)
+    run_check(["odf2xliff", args.input, original_xlf])
+    run_check(["xliff2po",  original_xlf,  args.pot])
+    run_check(["msgmerge","-N", "--no-wrap","-U", args.po, args.pot])
+    run_check(["po2xliff",  args.po,  "original_from_po.xlf"])
+    import polib
+
+    pofile = polib.pofile(args.po)
+    d= {}
+    for entry in pofile:
+        d[entry.msgid]=entry.msgstr
+    print(d)
+        
+        
+    import xml.etree.ElementTree as ET
+    mytree = ET.parse(original_xlf)
+    myroot = mytree.getroot()
+    file_=myroot[0]
+    print("file", file_)
+    print("Tree", mytree)
+    print("root", myroot)
+    its=mytree.find("body")
+    print(its)
+    body=file_[0]
+    for e in body:
+        source=e[0]
+        if source.text in d and d[source.text]!="":
+            print(".")
+            e.set('approved', 'yes')
+            target=ET.SubElement(e, "target") 
+            target.text=d[source.text]
+#            target.set("state","signed-off")
+#            target.set("phase-name","approval-1")
+    mytree.write("original_from_po.xlf",encoding="UTF-8",xml_declaration=True)
+
+#    
+    replace_in_file("original_from_po.xlf", "ns0:", "")
+    replace_in_file("original_from_po.xlf", ":ns0", "")
+
+    run_check(["xliff2odf", "-t",  args.input, "-i", "original_from_po.xlf", args.output])
+#
+
