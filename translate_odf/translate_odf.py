@@ -5,6 +5,7 @@ from shutil import copyfile
 from subprocess import run
 from pkg_resources import resource_filename
 from translate_odf.reusing.file_functions import replace_in_file
+import xml.etree.ElementTree as ET
 
 from translate_odf.version import argparse_epilog
 
@@ -65,8 +66,8 @@ def main_xlf():
 
     if path.exists(temporal_destiny_xlf) is True:
         remove(temporal_destiny_xlf)
-
-
+def innercontent(element):
+    return (element.text or '') + ''.join(ET.tostring(e, 'unicode').replace("ns0:", "") for e in element)
 
 def main_po():
     parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
@@ -100,7 +101,49 @@ def main_po():
     if path.exists(original_xlf) is True:
         remove(original_xlf)
     run_check(["odf2xliff", args.input, original_xlf])
-    run_check(["xliff2po",  original_xlf,  args.pot])
+    
+    ##Leemos sources
+    mytree = ET.parse(original_xlf)
+    myroot = mytree.getroot()
+    file_=myroot[0]
+    body=file_[0]
+    sources=set()
+    for e in body:
+        sources.add(innercontent(e[0])    )
+    
+    ##HACEMOS PO
+    import polib
+
+    po = polib.POFile()
+    po.metadata = {
+        'Project-Id-Version': '1.0',
+        'Report-Msgid-Bugs-To': 'you@example.com',
+        'POT-Creation-Date': '2007-10-18 14:00+0100',
+        'PO-Revision-Date': '2007-10-18 14:00+0100',
+        'Last-Translator': 'you <you@example.com>',
+        'Language-Team': 'English <yourteam@example.com>',
+        'MIME-Version': '1.0',
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Transfer-Encoding': '8bit',
+    }
+    for i,  source in enumerate(sources):
+        entry = polib.POEntry(
+            msgid=source,
+            msgstr='', 
+            occurrences=[('welcome.py', str(i)),]
+        )
+        po.append(entry)
+    po.save(args.pot)
+
+
+    
+    
+    
+    
+    #run_check(["xliff2po",  original_xlf,  args.pot])
+    
+    
+    
     run_check(["msgmerge","-N", "--no-wrap","-U", args.po, args.pot])
     run_check(["po2xliff",  args.po,  "original_from_po.xlf"])
     import polib
@@ -112,9 +155,6 @@ def main_po():
     print(d)
         
         
-    import xml.etree.ElementTree as ET
-    mytree = ET.parse(original_xlf)
-    myroot = mytree.getroot()
     file_=myroot[0]
     print("file", file_)
     print("Tree", mytree)
