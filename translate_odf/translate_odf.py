@@ -1,11 +1,15 @@
 from argparse import ArgumentParser,  RawTextHelpFormatter
 from gettext import translation
 from os import path, remove
+from polib import POEntry,  POFile, pofile
 from shutil import copyfile
 from subprocess import run
 from pkg_resources import resource_filename
 from translate_odf.reusing.file_functions import replace_in_file
+from translate_odf.version import __version__
+from unogenerator import ODT
 import xml.etree.ElementTree as ET
+from logging import info, ERROR, WARNING, INFO, DEBUG, CRITICAL, basicConfig, debug
 
 from translate_odf.version import argparse_epilog
 
@@ -14,6 +18,24 @@ try:
     _=t.gettext
 except:
     _=str
+
+## Sets debug sustem, needs
+## @param args It's the result of a argparse     args=parser.parse_args()        
+def addDebugSystem(level):
+    logFormat = "%(asctime)s.%(msecs)03d %(levelname)s %(message)s [%(module)s:%(lineno)d]"
+    dateFormat='%F %I:%M:%S'
+
+    if level=="DEBUG":#Show detailed information that can help with program diagnosis and troubleshooting. CODE MARKS
+        basicConfig(level=DEBUG, format=logFormat, datefmt=dateFormat)
+    elif level=="INFO":#Everything is running as expected without any problem. TIME BENCHMARCKS
+        basicConfig(level=INFO, format=logFormat, datefmt=dateFormat)
+    elif level=="WARNING":#The program continues running, but something unexpected happened, which may lead to some problem down the road. THINGS TO DO
+        basicConfig(level=WARNING, format=logFormat, datefmt=dateFormat)
+    elif level=="ERROR":#The program fails to perform a certain function due to a bug.  SOMETHING BAD LOGIC
+        basicConfig(level=ERROR, format=logFormat, datefmt=dateFormat)
+    elif level=="CRITICAL":#The program encounters a serious error and may stop running. ERRORS
+        basicConfig(level=CRITICAL, format=logFormat, datefmt=dateFormat)
+    info("Debug level set to {}".format(level))
 
 def run_check(command, shell=False):
     p=run(command, shell=shell, capture_output=True);
@@ -28,6 +50,8 @@ def run_check(command, shell=False):
 
 def main_xlf():
     parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
+    parser.add_argument('--version', action='version', version=__version__)
+    parser.add_argument('--debug', help="Debug program information", choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"], default="ERROR")
     parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
     parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
     parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
@@ -66,10 +90,13 @@ def main_xlf():
 
     if path.exists(temporal_destiny_xlf) is True:
         remove(temporal_destiny_xlf)
+
 def innercontent(element):
     return (element.text or '') + ''.join(ET.tostring(e, 'unicode').replace("ns0:", "") for e in element)
+    
 
-def main_po():
+
+def main_po_with_signs():
     parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
     parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
     parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
@@ -94,8 +121,6 @@ def main_po():
     print(_(f"  - File catalog pot: {args.pot}"))
     print(_(f"  - File catalog po: {args.po}"))
     
-    if path.exists(args.po)==False:
-        run_check(["msginit", "-i", args.pot,  "-o", args.po])
 
     original_xlf="original.xlf"
     if path.exists(original_xlf) is True:
@@ -109,12 +134,15 @@ def main_po():
     body=file_[0]
     sources=set()
     for e in body:
-        sources.add(innercontent(e[0])    )
+        sources.add(innercontent(e[0]) )
+        
+    sources=list(sources)
+    sources.sort()
     
     ##HACEMOS PO
-    import polib
 
-    po = polib.POFile()
+
+    po = POFile()
     po.metadata = {
         'Project-Id-Version': '1.0',
         'Report-Msgid-Bugs-To': 'you@example.com',
@@ -127,7 +155,7 @@ def main_po():
         'Content-Transfer-Encoding': '8bit',
     }
     for i,  source in enumerate(sources):
-        entry = polib.POEntry(
+        entry = POEntry(
             msgid=source,
             msgstr='', 
             occurrences=[('welcome.py', str(i)),]
@@ -136,6 +164,8 @@ def main_po():
     po.save(args.pot)
 
 
+    if path.exists(args.po)==False:
+        run_check(["msginit", "-i", args.pot,  "-o", args.po])
     
     
     
@@ -151,26 +181,16 @@ def main_po():
     pofile = polib.pofile(args.po)
     d= {}
     for entry in pofile:
-        d[entry.msgid]=entry.msgstr
-    print(d)
-        
+        d[entry.msgid]=entry.msgstr        
         
     file_=myroot[0]
-    print("file", file_)
-    print("Tree", mytree)
-    print("root", myroot)
-    its=mytree.find("body")
-    print(its)
     body=file_[0]
     for e in body:
         source=e[0]
         if source.text in d and d[source.text]!="":
-            print(".")
             e.set('approved', 'yes')
             target=ET.SubElement(e, "target") 
             target.text=d[source.text]
-#            target.set("state","signed-off")
-#            target.set("phase-name","approval-1")
     mytree.write("original_from_po.xlf",encoding="UTF-8",xml_declaration=True)
 
 #    
@@ -179,4 +199,154 @@ def main_po():
 
     run_check(["xliff2odf", "-t",  args.input, "-i", "original_from_po.xlf", args.output])
 #
+    print(f"{len(sources)} messages found")
 
+def command_main_po(from_language, to_language, input, output=None, po=None, pot=None, pdf=False, undetected_strings=[], fake=None):
+    extension=input.split(".")[1:][0]
+
+    if output is None:
+        output=f"{input}.{to_language}.{extension}"
+    if po is None:
+        po=f"{input}.{to_language}.po"
+    if pot is None:
+        pot=f"{input}.{to_language}.pot"
+
+    print(_(f"Translating '{input}' from '{from_language }' to '{to_language}'"))
+    print(_(f"  - Output: {output}"))
+    print(_(f"  - File catalog pot: {pot}"))
+    print(_(f"  - File catalog po: {po}"))
+    
+    original_xlf="original.xlf"
+    if path.exists(original_xlf) is True:
+        remove(original_xlf)
+    
+    doc=ODT(input)
+    
+    
+    # Creating a list of ordered document strings
+    run_check(["odf2xliff", input, original_xlf])
+    ##Leemos sources
+    mytree = ET.parse(original_xlf)
+    myroot = mytree.getroot()
+    file_=myroot[0]
+    body=file_[0]
+    sources=set()
+    debug("==== EXTRACTING FROM XLF ====")
+    for e in body:
+        if e[0].text is not None:#<source>
+            s=innercontent(e[0])
+            arr=removeTags(s)
+            for t in arr:
+                sources.add(t)
+                
+#    # Creating other with uno IGNORABA CAMPOS PERO NO BUSCABA BIEN
+#    debug ("ADDING WITH UNOGENERATOR")
+#    oText = doc.document.Text
+#    ParEnum = oText.createEnumeration()
+#    while ParEnum.hasMoreElements():
+#        P = ParEnum.nextElement()
+#        if P.supportsService("com.sun.star.text.Paragraph"):
+#            debug(P.String)
+#            if P.String!="":
+#                sources.add (P.String)
+#        if P.supportsService("com.sun.star.text.TextTable"):
+#            cellNames = P.getCellNames
+#            for Name in cellNames:
+#                Cell = P.getCellByName(Name)
+#                if Cell.String!="":
+#                    sources.add (Cell.String)
+                
+    for s in undetected_strings:
+        sources.add(s)
+    sources=list(sources)
+    sources.sort()
+    sources= sorted(sources, key = len, reverse=True)
+    if path.exists(original_xlf) is True:
+        remove(original_xlf)
+    
+    # Creating pot file
+    file_pot = POFile()
+    file_pot.metadata = {
+        'Project-Id-Version': '1.0',
+        'Report-Msgid-Bugs-To': 'you@example.com',
+        'POT-Creation-Date': '2007-10-18 14:00+0100',
+        'PO-Revision-Date': '2007-10-18 14:00+0100',
+        'Last-Translator': 'you <you@example.com>',
+        'Language-Team': 'English <yourteam@example.com>',
+        'MIME-Version': '1.0',
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Transfer-Encoding': '8bit',
+    }
+    for i,  source in enumerate(sources):
+        entry = POEntry(
+            msgid=source,
+            msgstr='', 
+            occurrences=[('string', str(i)),]
+        )
+        file_pot.append(entry)
+    file_pot.save(pot)
+    
+    #Merging pot with out po file
+    if path.exists(po)==False:
+        run_check(["msginit", "-i", pot,  "-o", po])
+    run_check(["msgmerge","-N", "--no-wrap","-U", po, pot])
+    
+    #Creating our translated output
+    debug ("==== WRITING TO ODT ====")
+    file_po = pofile(po)
+    for entry in file_po:
+        if fake is True:
+            msgstr="Fake"
+        else:
+            msgstr=entry.msgstr
+        if msgstr != "":
+            debug(f"'{entry.msgid}' ==> '{msgstr}'")
+            doc.findall_and_replace(entry.msgid,  msgstr)
+            
+    doc.save(output)
+    if pdf is True:
+        doc.export_pdf(output+".pdf")
+    doc.close()
+    print(f"{len(sources)} messages found. {len(file_po.translated_entries())} translated. {len(file_po.untranslated_entries())} untranslated.")
+
+
+# Hola <lkjlklk> Adios
+def removeTags(text):
+    r=[]
+    numopens=0
+    string_=""
+    for c in text:
+        if c=="<":
+            if numopens==0:
+                if string_!="":
+                    r.append(string_)
+                string_=""
+            numopens=numopens+1
+        elif c==">":
+            numopens=numopens-1
+        else:
+            if numopens==0:
+                string_=string_+c
+    if string_!="":
+        r.append(string_)
+    debug(f"{text} <==> {str(r)}")
+    return r
+            
+def main_po():
+    parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
+    parser.add_argument('--version', action='version', version=__version__)
+    parser.add_argument('--debug', help="Debug program information", choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"], default="ERROR")
+
+    parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
+    parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
+    parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
+    parser.add_argument('--output', action='store', help=_('Path where translated file is going to be generated. If missing add tranlation code before name extension'), default=None,  metavar="FILE")
+    parser.add_argument('--po', action='store', help=_('Catalogue with strings to translate in XLIFF format'), default=None,  metavar="FILE")
+    parser.add_argument('--pot', action='store', help=_('Generate pot file'), default=None,  metavar="FILE")
+    parser.add_argument('--pdf', action='store_true', help=_('Generate output in pdf too'), default=False)
+    parser.add_argument('--undetected', action='append', help=_('Undetected strings to apped to translation'), default=[])
+    parser.add_argument('--fake', action='store_true', help=_('Sets fake to all strings'), default=False)
+    args=parser.parse_args()
+    addDebugSystem(args.debug)
+    
+    command_main_po(args.from_language, args.to_language, args.input, args.output, args.po, args.pot, args.pdf, args.undetected, args.fake)
