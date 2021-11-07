@@ -8,7 +8,6 @@ from pkg_resources import resource_filename
 from translate_odf.version import __version__
 from unogenerator import ODT
 import xml.etree.ElementTree as ET
-from logging import info, ERROR, WARNING, INFO, DEBUG, CRITICAL, basicConfig, debug
 
 from translate_odf.version import argparse_epilog
 
@@ -17,24 +16,6 @@ try:
     _=t.gettext
 except:
     _=str
-
-## Sets debug sustem, needs
-## @param args It's the result of a argparse     args=parser.parse_args()        
-def addDebugSystem(level):
-    logFormat = "%(asctime)s.%(msecs)03d %(levelname)s %(message)s [%(module)s:%(lineno)d]"
-    dateFormat='%F %I:%M:%S'
-
-    if level=="DEBUG":#Show detailed information that can help with program diagnosis and troubleshooting. CODE MARKS
-        basicConfig(level=DEBUG, format=logFormat, datefmt=dateFormat)
-    elif level=="INFO":#Everything is running as expected without any problem. TIME BENCHMARCKS
-        basicConfig(level=INFO, format=logFormat, datefmt=dateFormat)
-    elif level=="WARNING":#The program continues running, but something unexpected happened, which may lead to some problem down the road. THINGS TO DO
-        basicConfig(level=WARNING, format=logFormat, datefmt=dateFormat)
-    elif level=="ERROR":#The program fails to perform a certain function due to a bug.  SOMETHING BAD LOGIC
-        basicConfig(level=ERROR, format=logFormat, datefmt=dateFormat)
-    elif level=="CRITICAL":#The program encounters a serious error and may stop running. ERRORS
-        basicConfig(level=CRITICAL, format=logFormat, datefmt=dateFormat)
-    info("Debug level set to {}".format(level))
 
 def run_check(command, shell=False):
     p=run(command, shell=shell, capture_output=True);
@@ -50,7 +31,7 @@ def run_check(command, shell=False):
 def main_xlf():
     parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
     parser.add_argument('--version', action='version', version=__version__)
-    parser.add_argument('--debug', help="Debug program information", choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"], default="ERROR")
+    parser.add_argument('--log', action="store_true",  help="Generates a log", default=False)
     parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
     parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
     parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
@@ -103,11 +84,26 @@ def command_main_po(from_language, to_language, input, output=None, po=None, pot
         po=f"{input}.{to_language}.po"
     if pot is None:
         pot=f"{input}.{to_language}.pot"
+        
+    logfile=f"{output}.log"
+    log=open(logfile, "w")
 
-    print(_(f"Translating '{input}' from '{from_language }' to '{to_language}'"))
-    print(_(f"  - Output: {output}"))
-    print(_(f"  - File catalog pot: {pot}"))
-    print(_(f"  - File catalog po: {po}"))
+
+    s=_(f"Translating '{input}' from '{from_language }' to '{to_language}'")
+    print(s)
+    log.write(s+"\n")
+    s=_(f"  - Output: {output}")
+    print(s)
+    log.write(s+"\n")
+    s=_(f"  - File catalog pot: {pot}")
+    print(s)
+    log.write(s+"\n")
+    s=_(f"  - File catalog po: {po}")
+    print(s)
+    log.write(s+"\n")
+    s=_(f"  - Translation log: {logfile}")
+    print(s)
+    log.write(s+"\n")
     
     original_xlf="original.xlf"
     if path.exists(original_xlf) is True:
@@ -124,7 +120,6 @@ def command_main_po(from_language, to_language, input, output=None, po=None, pot
     file_=myroot[0]
     body=file_[0]
     sources=set()
-    debug("==== EXTRACTING FROM XLF ====")
     for e in body:
         if e[0].text is not None:#<source>
             s=innercontent(e[0])
@@ -132,28 +127,13 @@ def command_main_po(from_language, to_language, input, output=None, po=None, pot
             for t in arr:
                 sources.add(t)
                 
-#    # Creating other with uno IGNORABA CAMPOS PERO NO BUSCABA BIEN
-#    debug ("ADDING WITH UNOGENERATOR")
-#    oText = doc.document.Text
-#    ParEnum = oText.createEnumeration()
-#    while ParEnum.hasMoreElements():
-#        P = ParEnum.nextElement()
-#        if P.supportsService("com.sun.star.text.Paragraph"):
-#            debug(P.String)
-#            if P.String!="":
-#                sources.add (P.String)
-#        if P.supportsService("com.sun.star.text.TextTable"):
-#            cellNames = P.getCellNames
-#            for Name in cellNames:
-#                Cell = P.getCellByName(Name)
-#                if Cell.String!="":
-#                    sources.add (Cell.String)
-                
     for s in undetected_strings:
         sources.add(s)
     sources=list(sources)
-    sources.sort()
-    sources= sorted(sources, key = len, reverse=True)
+
+    
+    
+    
     if path.exists(original_xlf) is True:
         remove(original_xlf)
     
@@ -184,24 +164,66 @@ def command_main_po(from_language, to_language, input, output=None, po=None, pot
         run_check(["msginit", "-i", pot,  "-o", po])
     run_check(["msgmerge","-N", "--no-wrap","-U", po, pot])
     
-    #Creating our translated output
-    debug ("==== WRITING TO ODT ====")
+    # Creates a dictionary of translations
+    dict_po={}
     file_po = pofile(po)
-    for entry in file_po:
+    for i, entry in enumerate(file_po):
         if fake is True:
-            msgstr="Fake"
+            dict_po[entry.msgid]=f"{{{entry.msgid}}}"
         else:
-            msgstr=entry.msgstr
-        if msgstr != "":
-            debug(f"'{entry.msgid}' ==> '{msgstr}'")
-            doc.findall_and_replace(entry.msgid,  msgstr)
+            if entry.msgstr == "":
+                dict_po[entry.msgid]=entry.msgid
+            else:
+                dict_po[entry.msgid]=entry.msgstr
+        
+    #Converts sources to entries (list of tuples)
+    entries=[]
+    for source in sources:
+        entries.append((source, dict_po[source] ))
+    entries=sorted(entries,  key=lambda item: len(item[0]), reverse=True)
+    
+    
+    #Creating our translated output
+    log.write ("\n\n==== TRANSLATION LOGS ====\n")
+    warns=""
+    for i, (find, replace) in enumerate(entries):
+        number=doc.findall_and_replace(find,  replace)
+        rs=replaced_entries_before(find,  i,  entries)
+        s=f"""
+* Entry {i}
+
+    Original: {find}
+
+    Translation set {number} times: {replace}
+"""
+        log.write(s)
+        if len(rs)>0:
+            warns=warns + s +"    WARNING: This replacement could overwrite before replacements. Perhaps you'll need to overwrite your result later with unogenerator.\n"
+            for s in rs:
+                warns =warns + f"        - '{s[0]}' ==> '{s[1]}'\n"
+                
+    if warns!="":
+        log.write ("\n\n==== WARNINGS ====\n")
+        log.write(warns)
             
     doc.save(output)
     if pdf is True:
         doc.export_pdf(output+".pdf")
     doc.close()
     print(f"{len(sources)} messages found. {len(file_po.translated_entries())} translated. {len(file_po.untranslated_entries())} untranslated.")
+    
+    log.close()
 
+## Returns if a find entries is contained in any string of list sources replacements
+def replaced_entries_before(s,  index,  entries):
+    r=[]
+    if index==0:
+        return r
+
+    for find,  replace in entries[0:index-1]:
+        if s in replace:
+            r.append((find, replace))
+    return r
 
 # Hola <lkjlklk> Adios
 def removeTags(text):
@@ -222,14 +244,12 @@ def removeTags(text):
                 string_=string_+c
     if string_!="":
         r.append(string_)
-    debug(f"{text} <==> {str(r)}")
     return r
             
 def main_po():
     parser=ArgumentParser(prog='translate_odf', description=_('Translate ODF files with XLF formats'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
     parser.add_argument('--version', action='version', version=__version__)
-    parser.add_argument('--debug', help="Debug program information", choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"], default="ERROR")
-
+    parser.add_argument('--log', action="store_true",  help="Generates a log", default=False)
     parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
     parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
     parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
@@ -240,6 +260,5 @@ def main_po():
     parser.add_argument('--undetected', action='append', help=_('Undetected strings to apped to translation'), default=[])
     parser.add_argument('--fake', action='store_true', help=_('Sets fake to all strings'), default=False)
     args=parser.parse_args()
-    addDebugSystem(args.debug)
     
     command_main_po(args.from_language, args.to_language, args.input, args.output, args.po, args.pot, args.pdf, args.undetected, args.fake)
