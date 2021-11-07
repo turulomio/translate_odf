@@ -121,6 +121,7 @@ setup(name='translate_odf',
      entry_points = {'console_scripts': [
                                            'translate_odf2xlf=translate_odf.translate_odf:main_xlf',
                                            'translate_odf2po=translate_odf.translate_odf:main_po',
+                                           'translate_odf_generatepo=translate_odf.translate_odf:main_generate_po',
                                         ],
                     },
      cmdclass={'doxygen': Doxygen,

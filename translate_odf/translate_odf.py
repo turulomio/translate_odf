@@ -73,6 +73,93 @@ def main_xlf():
 
 def innercontent(element):
     return (element.text or '') + ''.join(ET.tostring(e, 'unicode').replace("ns0:", "") for e in element)
+            
+def main_generate_po():
+    parser=ArgumentParser(prog='translate_odf', description=_('Generate a po and pot file from ODF'), epilog=argparse_epilog(), formatter_class=RawTextHelpFormatter)
+    parser.add_argument('--version', action='version', version=__version__)
+    parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
+    parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
+    parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
+    parser.add_argument('--po', action='store', help=_('Catalogue with strings to translate in XLIFF format'), default=None,  metavar="FILE")
+    parser.add_argument('--pot', action='store', help=_('Generate pot file'), default=None,  metavar="FILE")
+    parser.add_argument('--undetected', action='append', help=_('Undetected strings to apped to translation'), default=[])
+    args=parser.parse_args()
+    
+    command_generate_po(args.from_language, args.to_language, args.input, args.po, args.pot, args.undetected)
+
+
+def command_generate_po(from_language, to_language, input, po=None, pot=None, undetected_strings=[]):   
+    
+    def same_entries_to_ocurrences(l):
+        l= sorted(l, key=lambda x: (x[1], x[2]))
+        r=[]
+        for type, number,  position,  text in l:
+            r.append((type, f"{number}#{position}"))
+        return r
+        
+        ##########################
+        
+    if po is None:
+        po=f"{input}.{to_language}.po"
+    if pot is None:
+        pot=f"{input}.{to_language}.pot"
+    # Creating pot file
+    doc=ODT(input)
+
+    #Paragraph
+    entries=[]#List of ("type", numero, posicion) type=Paragraph, numero=numero parrafo y posición orden dentro del parrafo
+    set_strings=set()
+    enumeration = doc.cursor.Text.createEnumeration()
+    for i,  par in enumerate(enumeration):
+        position=0
+        if  par.supportsService("com.sun.star.text.Paragraph") :
+#            for position, element in par.createEnumeration():
+#                print(par, dir(element))
+                text_=par.getString()
+                if text_ !="":
+                    entries.append(("Paragraph",  i,  position, text_))
+                    set_strings.add(text_)
+#                print(par, dir(par))
+                for i in doc.document.getTextSections():
+                    print (i.getString())
+                for i in doc.document.getRedlines():
+                    print (i,  dir(i), i.getString())
+#        print(text_, par.hasElements(), par.getElementType(), par.getTypes())
+    doc.close()
+    
+    
+        
+    file_pot = POFile()
+    file_pot.metadata = {
+        'Project-Id-Version': '1.0',
+        'Report-Msgid-Bugs-To': 'you@example.com',
+        'POT-Creation-Date': '2007-10-18 14:00+0100',
+        'PO-Revision-Date': '2007-10-18 14:00+0100',
+        'Last-Translator': 'you <you@example.com>',
+        'Language-Team': 'English <yourteam@example.com>',
+        'MIME-Version': '1.0',
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Transfer-Encoding': '8bit',
+    }
+    for s in set_strings:
+        same_entries=[] #Join seame text entries
+        for type, number, position, string_ in entries:
+            if string_==s:
+                same_entries.append((type, number, position, string_))
+
+        entry = POEntry(
+            msgid=s,
+            msgstr='', 
+            occurrences=same_entries_to_ocurrences(same_entries)
+        )
+        file_pot.append(entry)
+    file_pot.save(pot)
+    
+    #Merging pot with out po file
+    if path.exists(po)==False:
+        run_check(["msginit", "-i", pot,  "-o", po])
+    run_check(["msgmerge","-N", "--no-wrap","-U", po, pot])
+    
 
 
 def command_main_po(from_language, to_language, input, output=None, po=None, pot=None, pdf=False, undetected_strings=[], fake=None):
