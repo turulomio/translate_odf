@@ -64,6 +64,9 @@ For other Linux and Windows for your python installation
 
 ## Changelog
 
+### 0.3.0
+- Added basic support to translate_odf2po.
+
 ### 0.2.0
 
 - Removed strange error code, seems it's not necessary anymore

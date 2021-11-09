@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-05-15 09:13+0200\n"
+"POT-Creation-Date: 2021-11-09 19:25+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -53,6 +53,40 @@ msgid "  - File to translate: {args.catalogue}"
 msgstr ""
 
 msgid "Catalogue doesn't exists or is empty. Creating from empty catalogue"
+msgstr ""
+
+msgid "Generate a po and pot file from ODF"
+msgstr ""
+
+msgid "Generate pot file"
+msgstr ""
+
+msgid "Undetected strings to apped to translation"
+msgstr ""
+
+msgid "Translating '{input}' from '{from_language }' to '{to_language}'"
+msgstr ""
+
+#, python-brace-format
+msgid "  - Output: {output}"
+msgstr ""
+
+#, python-brace-format
+msgid "  - File catalog pot: {pot}"
+msgstr ""
+
+#, python-brace-format
+msgid "  - File catalog po: {po}"
+msgstr ""
+
+#, python-brace-format
+msgid "  - Translation log: {logfile}"
+msgstr ""
+
+msgid "Generate output in pdf too"
+msgstr ""
+
+msgid "Sets fake to all strings"
 msgstr ""
 
 msgid "To translate xlf files you can use Lokalize open source tool, which you can find it in most Linux distributions."

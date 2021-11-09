@@ -2,9 +2,9 @@ from datetime import datetime
 from gettext import translation
 from pkg_resources import resource_filename
 
-__versiondatetime__ = datetime(2021, 5, 15)
+__versiondatetime__ = datetime(2021, 11, 9, 19, 24)
 __versiondate__=__versiondatetime__.date()
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 
 try:
     t=translation('translate_odf',resource_filename("translate_odf","locale"))
