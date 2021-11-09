@@ -41,10 +41,11 @@ class Procedure(Command):
   * python setup.py doc
   * python setup.py install
   * python setup.py doxygen
-  * git commit -a -m 'translate_odf-{}'
+  * git commit -a -m 'translate_odf-{0}'
   * git push
   * Hacer un nuevo tag en GitHub
-  * python setup.py sdist upload -r pypi
+  * python setup.py sdist
+  * twine upload dist/translate_odf-{0}.tar.gz 
   * python setup.py uninstall
   * Crea un nuevo ebuild de Gentoo con la nueva versión
   * Subelo al repositorio del portage
