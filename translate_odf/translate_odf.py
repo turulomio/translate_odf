@@ -111,20 +111,12 @@ def command_generate_po(from_language, to_language, input, po=None, pot=None, un
     set_strings=set()
     enumeration = doc.cursor.Text.createEnumeration()
     for i,  par in enumerate(enumeration):
-        position=0
         if  par.supportsService("com.sun.star.text.Paragraph") :
-#            for position, element in par.createEnumeration():
-#                print(par, dir(element))
-                text_=par.getString()
-                if text_ !="":
+            for position, element in enumerate(par.createEnumeration()):
+                text_=element.getString()
+                if text_ !="" and text_!=" " and text_!="  ":
                     entries.append(("Paragraph",  i,  position, text_))
                     set_strings.add(text_)
-#                print(par, dir(par))
-                for i in doc.document.getTextSections():
-                    print (i.getString())
-                for i in doc.document.getRedlines():
-                    print (i,  dir(i), i.getString())
-#        print(text_, par.hasElements(), par.getElementType(), par.getTypes())
     doc.close()
     
     
@@ -159,6 +151,8 @@ def command_generate_po(from_language, to_language, input, po=None, pot=None, un
     if path.exists(po)==False:
         run_check(["msginit", "-i", pot,  "-o", po])
     run_check(["msgmerge","-N", "--no-wrap","-U", po, pot])
+    
+    print(f"{len(set_strings)} different strings detected")
     
 
 
