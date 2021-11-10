@@ -106,7 +106,7 @@ def command_generate_po(from_language, to_language, input, po=None, pot=None, un
     # Creating pot file
     doc=ODT(input)
 
-    #Paragraph
+    #Extract strings from paragraphs
     entries=[]#List of ("type", numero, posicion) type=Paragraph, numero=numero parrafo y posición orden dentro del parrafo
     set_strings=set()
     enumeration = doc.cursor.Text.createEnumeration()
@@ -119,6 +119,24 @@ def command_generate_po(from_language, to_language, input, po=None, pot=None, un
                     set_strings.add(text_)
     doc.close()
     
+    #Extract strings from headers
+#    ' Turn headers on and then make them shared!
+#oPstyle.HeaderOn = True
+#oPstyle.HeaderShared = True
+#' The is also a RightText and a LeftText
+#oHeader = oPstyle.RightPageHeaderContent
+#oText = oHeader.CenterText
+#' You may now set the text object to be anything you desire
+#' Use setSTring() from the text object to set simple text.
+#' Use a cursor to insert a field (such as the current sheet name).
+#' First, clear any existing text!
+#oText.setString("")
+#oCursor = oText.createTextCursor()
+#oText.insertString(oCursor, "Sheet: ", False)
+#' This will have the sheet name of the current sheet!
+#sService = "com.sun.star.text.TextField.SheetName"
+#oField = oDoc.createInstance(sService)
+#oText.insertTextContent(oCursor, oField, False)
     
         
     file_pot = POFile()
