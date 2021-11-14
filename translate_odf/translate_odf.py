@@ -1,6 +1,6 @@
 from argparse import ArgumentParser,  RawTextHelpFormatter
 from gettext import translation
-from os import path, remove
+from os import path, remove, makedirs
 from polib import POEntry,  POFile, pofile
 from shutil import copyfile
 from subprocess import run
@@ -79,45 +79,50 @@ def main_generate_po():
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--from_language', action='store', help=_('Language to translate from. Example codes: es, fr, en, md'), required=True, metavar="CODE")
     parser.add_argument('--to_language', action='store', help=_('Language to translate to. Example codes: es, fr, en, md'), required=True,  metavar="CODE")
-    parser.add_argument('--input', action='store', help=_('File to translate'), required=True,  metavar="FILE")
-    parser.add_argument('--po', action='store', help=_('Catalogue with strings to translate in XLIFF format'), default=None,  metavar="FILE")
-    parser.add_argument('--pot', action='store', help=_('Generate pot file'), default=None,  metavar="FILE")
+    parser.add_argument('--input', action='append', help=_('File to translate'), required=True,  metavar="FILE")
+    parser.add_argument('--output_directory', action='store', help=_('Output directory'), required=True,  metavar="FILE")
     parser.add_argument('--undetected', action='append', help=_('Undetected strings to apped to translation'), default=[])
+    parser.add_argument('--translate', action='store_true', help=_('Make translation too'), default=False)
+    
     args=parser.parse_args()
     
-    command_generate_po(args.from_language, args.to_language, args.input, args.po, args.pot, args.undetected)
+    command_generate_po(args.from_language, args.to_language, args.input, args.output_directory, args.translate, args.undetected)
 
-
-def command_generate_po(from_language, to_language, input, po=None, pot=None, undetected_strings=[]):   
-    
+## Input is a listst of strings
+def command_generate_po(from_language, to_language, input, output_directory, translate,  undetected_strings=[]):   
     def same_entries_to_ocurrences(l):
-        l= sorted(l, key=lambda x: (x[1], x[2]))
+        l= sorted(l, key=lambda x: (x[1], x[2], x[3]))
         r=[]
-        for type, number,  position,  text in l:
-            r.append((type, f"{number}#{position}"))
+        for filename, type, number,  position,  text in l:
+            r.append((filename, f"{type}#{number}#{position}"))
         return r
         
         ##########################
         
-    if po is None:
-        po=f"{input}.{to_language}.po"
-    if pot is None:
-        pot=f"{input}.{to_language}.pot"
-    # Creating pot file
-    doc=ODT(input)
-
-    #Extract strings from paragraphs
+    makedirs(output_directory, exist_ok=True)
+    makedirs(f"{output_directory}/{to_language}", exist_ok=True)
+    
+    pot=f"{output_directory}/catalogue.pot"
+    po=f"{output_directory}/{to_language}/{to_language}.po"
+        
     entries=[]#List of ("type", numero, posicion) type=Paragraph, numero=numero parrafo y posición orden dentro del parrafo
     set_strings=set()
-    enumeration = doc.cursor.Text.createEnumeration()
-    for i,  par in enumerate(enumeration):
-        if  par.supportsService("com.sun.star.text.Paragraph") :
-            for position, element in enumerate(par.createEnumeration()):
-                text_=element.getString()
-                if text_ !="" and text_!=" " and text_!="  ":
-                    entries.append(("Paragraph",  i,  position, text_))
-                    set_strings.add(text_)
-    doc.close()
+    # Creating pot file
+    print(_("Extracting strings from:"))
+    for filename in input:
+        print(_(f"   - {filename}"))
+        doc=ODT(filename)
+
+        #Extract strings from paragraphs
+        enumeration = doc.cursor.Text.createEnumeration()
+        for i,  par in enumerate(enumeration):
+            if  par.supportsService("com.sun.star.text.Paragraph") :
+                for position, element in enumerate(par.createEnumeration()):
+                    text_=element.getString()
+                    if text_ !="" and text_!=" " and text_!="  ":
+                        entries.append((filename,"Paragraph",  i,  position, text_))
+                        set_strings.add(text_)
+        doc.close()
     
     #Extract strings from headers
 #    ' Turn headers on and then make them shared!
@@ -153,9 +158,9 @@ def command_generate_po(from_language, to_language, input, po=None, pot=None, un
     }
     for s in set_strings:
         same_entries=[] #Join seame text entries
-        for type, number, position, string_ in entries:
+        for filename, type, number, position, string_ in entries:
             if string_==s:
-                same_entries.append((type, number, position, string_))
+                same_entries.append((filename, type, number, position, string_))
 
         entry = POEntry(
             msgid=s,
@@ -171,6 +176,17 @@ def command_generate_po(from_language, to_language, input, po=None, pot=None, un
     run_check(["msgmerge","-N", "--no-wrap","-U", po, pot])
     
     print(f"{len(set_strings)} different strings detected")
+    
+    
+    if translate is True:
+        print(_("Translating files to:"))
+        for filename in input:
+            doc=ODT(filename)
+            output=f"{output_directory}/{to_language}/{path.basename(filename)}"
+            print(_(f"   - {output}"))
+            doc.save(output)
+            doc.close()
+        
     
 
 
