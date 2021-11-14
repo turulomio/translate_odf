@@ -1,5 +1,10 @@
 # Translate_ODF project
 
+## THIS PROJECT IS ARCHIVED
+
+I made this project to try to translate odf. In my opinion, xliff2odf and odf2xliff are insuficient tools. I'm trying to improve odf translations in [unogenerator project](https://github.com/turulomio/unogenerator). Try `unogenerator_translation` script ;)
+
+
 ## About
 
 Frontend of xliff2odf and odf2xliff to translate easily odf documents
